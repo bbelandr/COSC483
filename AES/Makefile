@@ -1,5 +1,8 @@
 all:	AES.c
-	@gcc -o AES AES.c -Wall -g
+	@gcc -o exe/AES AES.c -Wall -g
 
 run:	all
-	@./AES
+	@./exe/AES
+
+clean:
+	@rm -f exe/AES
