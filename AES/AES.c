@@ -113,6 +113,63 @@ void shiftRows(uint8_t* state) {    // This is slow but I'm just trying to get s
     shiftRow(state, 3);
 }
 
+void keyExpansion(const uint8_t* key, uint8_t* w, const int Nk) {
+    
+    const uint32_t Rcon[52] = { 0x00000000,
+           0x01000000, 0x02000000, 0x04000000, 0x08000000,
+           0x10000000, 0x20000000, 0x40000000, 0x80000000,
+           0x1B000000, 0x36000000, 0x6C000000, 0xD8000000,
+           0xAB000000, 0x4D000000, 0x9A000000, 0x2F000000,
+           0x5E000000, 0xBC000000, 0x63000000, 0xC6000000,
+           0x97000000, 0x35000000, 0x6A000000, 0xD4000000,
+           0xB3000000, 0x7D000000, 0xFA000000, 0xEF000000,
+           0xC5000000, 0x91000000, 0x39000000, 0x72000000,
+           0xE4000000, 0xD3000000, 0xBD000000, 0x61000000,
+           0xC2000000, 0x9F000000, 0x25000000, 0x4A000000,
+           0x94000000, 0x33000000, 0x66000000, 0xCC000000,
+           0x83000000, 0x1D000000, 0x3A000000, 0x74000000,
+           0xE8000000, 0xCB000000, 0x8D000000
+    };
+
+    for (int i = 0; i < Nk; i++) {      // Placing the key into w
+        for (int j = 0; j < 4; j++) {
+            w[i*4 + j] = key[i*4 + j];
+        }
+    }
+
+    const int wCols = 4 * ((Nk + 6) + 1);
+    for (int col = Nk; col < wCols; col++) {
+        if (col % Nk == 0) {        // Is a multiple of Nk
+            // make a copy of w[col - 1]
+            uint8_t copy[4];
+            for (int i = 0; i < 4; i++) {
+                copy[i] = w[(col - 1) * 4 + i];
+            }
+            rotWord(copy);
+            for (int i = 0; i < 4; i++) {
+                copy[i] = subByte(copy[i]);
+            }
+
+            // XOR with Rcon
+            // printf("%.2x %.2x\n", copy[0], Rcon[col/4] >> 24);
+            copy[0] = copy[0] ^ (Rcon[col/4] >> 24);  // The - Nk is probably wrong
+            for (int i = 0; i < 4; i++) {
+                copy[i] = copy[i] ^ w[(col - 4) * 4 + i];
+            }
+
+            // Copying back into w
+            for (int i = 0; i < 4; i++) {
+                w[(col) * 4 + i] = copy[i];
+            }
+            // w[col] = copy
+            // printf("%.2d\n", col);
+
+        }
+    }
+
+
+}
+
 int main() {
     // TEST CASES
     // printf("%x\n", ffMultiply(0x57, 0x13));
@@ -128,19 +185,30 @@ int main() {
     // }
     // free(column);
 
+    const int Nk = 4;
+
     uint8_t* state = calloc(16, sizeof(uint8_t));
+    uint8_t* w = calloc(4 * (4 * ((Nk + 6) + 1)), sizeof(uint8_t));   // This will just store the bytes, not the columns
     const uint8_t stateArr[16] = {
         0x19, 0x3d, 0xe3, 0xbe, 
         0xa0, 0xf4, 0xe2, 0x2b, 
         0x9a, 0xc6, 0x8d, 0x2a, 
         0xe9, 0xf8, 0x48, 0x08
     };
+    const uint8_t key[16] = {
+        0x2b, 0x7e, 0x15, 0x16,
+        0x28, 0xae, 0xd2, 0xa6,
+        0xab, 0xf7, 0x15, 0x88,
+        0x09, 0xcf, 0x4f, 0x3c
+    };
+
     for (int i = 0; i < 16; i++) {
         state[i] = stateArr[i];
     }
 
-    subBytes(state);
-    shiftRows(state);
+    // subBytes(state);
+    // shiftRows(state);
+    keyExpansion(key, w, Nk);
     
     for (int i = 0; i < 4; i++) {
         for (int j = 0; j < 4; j++) {
@@ -149,4 +217,5 @@ int main() {
         printf("\n");
     }
     free(state);
+    free(w);
 }
