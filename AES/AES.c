@@ -39,9 +39,9 @@ uint8_t ffMultiply(uint8_t a, uint8_t b) {
 
 
 // K E Y   E X P A N S I O N
-// Takes a pointer to a four bit word and substitues each corresponding byte with S-Box
+// Helper function for substituting a byte by the SBOX table
 
-void subWord(uint8_t* word) {
+uint8_t subByte(uint8_t byte) {
     const uint8_t SBOX[16][16] = {  // Table to substitute bytes with
         { 0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76 },
         { 0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0 },
@@ -61,8 +61,14 @@ void subWord(uint8_t* word) {
         { 0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16 }
     };
     
+    return SBOX[byte >> 4][byte & 0b1111];
+}
+
+// Takes a pointer to a four bit word and substitues each corresponding byte with S-Box
+void subWord(uint8_t* word) {
+    
     for (int i = 0; i < 4; i++) {
-        word[i] = SBOX[word[i] >> 4][word[i] & 0b1111];
+        word[i] = subByte(word[i]);
     }
 }
 
@@ -75,21 +81,72 @@ void rotWord(uint8_t* word) {
     word[2] = lastByte;
 }
 
+
+// C I P H E R   F U N C T I O N S
+
+// THIS IS FOR SUBSTITUTING EVERY BYTE IN THE STATE
+void subBytes(uint8_t* state) {
+    for (int i = 0; i < 16; i++) {
+        state[i] = subByte(state[i]);
+    }
+}
+
+void shiftRow(uint8_t* state, int row) {
+
+    uint8_t lastByte = state[row + 3 * 4];
+    for (int j = 0; j < 4; j++) {
+        state[row + (((j + 3) * 4) % 16)] = state[row + j * 4];
+    }
+    state[row + 2 * 4] = lastByte;
+
+}
+// Rotates the first row by 0,
+//         second row by    1,
+//         third row by     2,
+//         fourth row by    3
+void shiftRows(uint8_t* state) {    // This is slow but I'm just trying to get something that works
+    shiftRow(state, 1);
+    shiftRow(state, 2);
+    shiftRow(state, 2);
+    shiftRow(state, 3);
+    shiftRow(state, 3);
+    shiftRow(state, 3);
+}
+
 int main() {
     // TEST CASES
     // printf("%x\n", ffMultiply(0x57, 0x13));
     
-    uint8_t* column = calloc(4, sizeof(uint8_t));
-    column[0] = 0x09;
-    column[1] = 0xcf;
-    column[2] = 0x4f;
-    column[3] = 0x3c;
-    
-    rotWord(column);
+    // uint8_t* column = calloc(4, sizeof(uint8_t));
+    // column[0] = 0x19;
+    // column[1] = 0x3d;
+    // column[2] = 0xe3;
+    // column[3] = 0xbe;
+    // subWord(column);
+    // for (int i = 0; i < 4; i++) {
+    //     printf("%x\n", column[i]);
+    // }
+    // free(column);
 
-    for (int i = 0; i < 4; i++) {
-        printf("%x\n", column[i]);
-
+    uint8_t* state = calloc(16, sizeof(uint8_t));
+    const uint8_t stateArr[16] = {
+        0x19, 0x3d, 0xe3, 0xbe, 
+        0xa0, 0xf4, 0xe2, 0x2b, 
+        0x9a, 0xc6, 0x8d, 0x2a, 
+        0xe9, 0xf8, 0x48, 0x08
+    };
+    for (int i = 0; i < 16; i++) {
+        state[i] = stateArr[i];
     }
-    free(column);
+
+    subBytes(state);
+    shiftRows(state);
+    
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 4; j++) {
+            printf("%.2x ", state[j * 4 + i]);
+        }
+        printf("\n");
+    }
+    free(state);
 }
