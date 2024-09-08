@@ -209,6 +209,8 @@ void invMixColumns(uint8_t* state) {
 }
 
 // Expands the key to the 10, 12, or 14 round keys (depending on 128, 192, or 256)
+// Once called, stores the expanded round key within w. w must be preacllocated.
+// w is formatted as a 1d array of columns. Each round key begins at a multiple of 16.
 void keyExpansion(const uint8_t* key, uint8_t* w, const int Nk) {
     const uint32_t Rcon[52] = { 0x00000000,
            0x01000000, 0x02000000, 0x04000000, 0x08000000,
@@ -266,8 +268,35 @@ void keyExpansion(const uint8_t* key, uint8_t* w, const int Nk) {
             }
         }
     }
+}
 
+// Takes the state and the round keys and places it into cipherText
+void cipher(const uint8_t* state, uint8_t* cipherText, uint8_t* w, const int Nk) {
+    
+    // Copying over the state into the ciphertext
+    for (int i = 0; i < 16; i++) {
+        cipherText[i] = state[i];
+    }
+    addRoundKey(cipherText, w);
 
+    const wRoundKeys = ((Nk + 6) + 1);
+    for (int i = 1; i < wRoundKeys; i++) {
+        
+        subBytes(cipherText);
+        shiftRows(cipherText);
+        if (i != wRoundKeys - 1)
+            mixColumns(cipherText);
+        addRoundKey(cipherText, w + i * 16);
+        
+        // for (int i = 0; i < 4; i++) {
+        //     for (int j = 0; j < 4; j++) {
+        //         printf("%.2x ", cipherText[j * 4 + i]);
+        //     }
+        //     printf("\n");
+        // }
+        // printf("\n");
+        
+    }
 }
 
 int main() {
@@ -307,25 +336,19 @@ int main() {
     }
 
 
-    uint8_t* state = (uint8_t*)calloc(16, sizeof(uint8_t));
-    uint8_t* roundKey = (uint8_t*)calloc(16, sizeof(uint8_t));
+    // uint8_t* state = (uint8_t*)calloc(16, sizeof(uint8_t));
+    // uint8_t* roundKey = (uint8_t*)calloc(16, sizeof(uint8_t));
     const uint8_t stateArr[16] = {
-        0x19, 0x3d, 0xe3, 0xbe,
-        0xa0, 0xf4, 0xe2, 0x2b,
-        0x9a, 0xc6, 0x8d, 0x2a,
-        0xe9, 0xf8, 0x48, 0x08
-    };
-    const uint8_t keyArr[16] = {
-        0xa0, 0xfa, 0xfe, 0x17,
-        0x88, 0x54, 0x2c, 0xb1,
-        0x23, 0xa3, 0x39, 0x39,
-        0x2a, 0x6c, 0x76, 0x05
+        0x32, 0x43, 0xf6, 0xa8,
+        0x88, 0x5a, 0x30, 0x8d,
+        0x31, 0x31, 0x98, 0xa2,
+        0xe0, 0x37, 0x07, 0x34
     };
 
-    for (int i = 0; i < 16; i++) {
-        state[i] = stateArr[i];
-        roundKey[i] = keyArr[i];
-    }
+    // for (int i = 0; i < 16; i++) {
+    //     state[i] = stateArr[i];
+    //     roundKey[i] = keyArr[i];
+    // }
 
 
     // subBytes(state);
@@ -337,14 +360,18 @@ int main() {
     // invShiftRows(state);
     // invSubBytes(state);
 
-    for (int i = 0; i < 4; i++) {
-        for (int j = 0; j < 4; j++) {
-            printf("%.2x ", state[j * 4 + i]);
-        }
-        printf("\n");
-    }
+    uint8_t cipherText[16];
+    cipher(stateArr, cipherText, w, Nk);
+
+    // Printing the State
+    // for (int i = 0; i < 4; i++) {
+    //     for (int j = 0; j < 4; j++) {
+    //         printf("%.2x ", cipherText[j * 4 + i]);
+    //     }
+    //     printf("\n");
+    // }
 
     free(w);
-    free(state);
-    free(roundKey);
+    // free(state);
+    // free(roundKey);
 }
