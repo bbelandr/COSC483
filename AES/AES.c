@@ -8,7 +8,7 @@
 // F I N I T E   F I E L D   A R I T H M E T I C
 
 // Adds/Subtracts two polynomials within GF(2^8)
-uint8_t ffAdd(uint8_t a, uint8_t b) {
+uint8_t ffAdd(const uint8_t a, const uint8_t b) {
     return a ^ b;
 }
 
@@ -141,7 +141,7 @@ void mixColumns(uint8_t* state) {
 
 }
 
-void addRoundKey(uint8_t* state, uint8_t* roundKey) {
+void addRoundKey(uint8_t* state, const uint8_t* roundKey) {
     for (int i = 0; i < 16; i++) {
         state[i] = ffAdd(state[i], roundKey[i]);
     }
@@ -271,7 +271,7 @@ void keyExpansion(const uint8_t* key, uint8_t* w, const int Nk) {
 }
 
 // Takes the state and the round keys and places it into cipherText
-void cipher(const uint8_t* state, uint8_t* cipherText, uint8_t* w, const int Nk) {
+void cipher(const uint8_t* state, uint8_t* cipherText, const uint8_t* w, const int Nk) {
     
     // Copying over the state into the ciphertext
     for (int i = 0; i < 16; i++) {
@@ -279,7 +279,7 @@ void cipher(const uint8_t* state, uint8_t* cipherText, uint8_t* w, const int Nk)
     }
     addRoundKey(cipherText, w);
 
-    const wRoundKeys = ((Nk + 6) + 1);
+    const int wRoundKeys = ((Nk + 6) + 1);
     for (int i = 1; i < wRoundKeys; i++) {
         
         subBytes(cipherText);
@@ -297,6 +297,37 @@ void cipher(const uint8_t* state, uint8_t* cipherText, uint8_t* w, const int Nk)
         // printf("\n");
         
     }
+}
+
+void invCipher(const uint8_t* cipherText, uint8_t* plainText, const uint8_t* w, const int Nk) {
+    // Copying over the cipherText to the plaintext
+    for (int i = 0; i < 16; i++) {
+        plainText[i] = cipherText[i];
+    }
+
+    const int wRoundKeys = ((Nk + 6) + 1);
+    addRoundKey(plainText, w + (wRoundKeys - 1) * 16);
+
+    for (int i = wRoundKeys - 2; i > 0; i--) {  // Continues until i == 0 for a different first step
+        invShiftRows(plainText);
+        invSubBytes(plainText);
+        addRoundKey(plainText, w + (i) * 16);
+        invMixColumns(plainText);
+    }
+
+    invShiftRows(plainText);
+    invSubBytes(plainText);
+    addRoundKey(plainText, w);
+
+    // Printing the plaintext
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 4; j++) {
+            printf("%.2x ", plainText[j * 4 + i]);
+        }
+        printf("\n");
+    }
+    printf("\n");
+
 }
 
 int main() {
@@ -351,17 +382,11 @@ int main() {
     // }
 
 
-    // subBytes(state);
-    // shiftRows(state);
-    // mixColumns(state);
-    // addRoundKey(state, roundKey);
-    // addRoundKey(state, roundKey);
-    // invMixColumns(state);
-    // invShiftRows(state);
-    // invSubBytes(state);
-
     uint8_t cipherText[16];
     cipher(stateArr, cipherText, w, Nk);
+
+    uint8_t plaintext[16];
+    invCipher(cipherText, plaintext, w, Nk);
 
     // Printing the State
     // for (int i = 0; i < 4; i++) {
