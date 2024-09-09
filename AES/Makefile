@@ -6,3 +6,7 @@ run:	all
 
 clean:
 	@rm -f exe/AES
+
+test: all
+	@./exe/AES > ./exe/output.txt
+	diff -y ./exe/output.txt appendix_c.txt

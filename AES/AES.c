@@ -235,10 +235,22 @@ void keyExpansion(const uint8_t* key, uint8_t* w, const int Nk) {
     }
 
     const int wCols = 4 * ((Nk + 6) + 1);
+    uint8_t copy[4];
     for (int col = Nk; col < wCols; col++) {
+        // // Printing w
+        // for (int i = 0; i < 4; i++) {
+        //     for (int j = 0; j < (4 * ((Nk + 6) + 1)); j++) {
+        //         printf("%.2x ", w[i + j * 4]);   // i*(4 * (Nk + 6 + 1))
+        //         if (j % 4 == 3) {
+        //             printf("    ");
+        //         }
+        //     }
+        //     printf("\n");
+        // }
+        // printf("\n");
+
         if (col % Nk == 0) {        // Is a multiple of Nk
             // make a copy of w[col - 1]
-            uint8_t copy[4];
             for (int i = 0; i < 4; i++) {
                 copy[i] = w[(col - 1) * 4 + i];
             }
@@ -250,9 +262,9 @@ void keyExpansion(const uint8_t* key, uint8_t* w, const int Nk) {
 
             // XOR with Rcon
             // printf("%.2x %.2x\n", copy[0], Rcon[col/4] >> 24);
-            copy[0] = copy[0] ^ (Rcon[col/4] >> 24); 
+            copy[0] = copy[0] ^ (Rcon[col/Nk] >> 24); 
             for (int i = 0; i < 4; i++) {
-                copy[i] = copy[i] ^ w[(col - 4) * 4 + i];
+                copy[i] = copy[i] ^ w[(col - Nk) * 4 + i];
             }
 
             // Copying back into w
@@ -260,6 +272,14 @@ void keyExpansion(const uint8_t* key, uint8_t* w, const int Nk) {
                 w[(col) * 4 + i] = copy[i];
             }
 
+        }
+        else if (Nk > 6 && col % Nk == 4) {
+            for (int i = 0; i < 4; i++) {   
+                copy[i] = w[(col - 1) * 4 + i];             // making a copy of w[i -1]
+                copy[i] = subByte(copy[i]);                 // subword(copy)
+                copy[i] = copy[i] ^ w[(col - Nk) * 4 + i];  // XOR with w[i - Nk]
+                w[(col) * 4 + i] = copy[i];                 // Copying back into w
+            }
         }
         else {
             // XOR by w[col - 1] and w[col - Nk]
@@ -270,23 +290,38 @@ void keyExpansion(const uint8_t* key, uint8_t* w, const int Nk) {
     }
 }
 
+// Helper function for displaying debug information about the ciphering
+void printRound(const int round, const char* str, const uint8_t* state) {
+    printf("round[%2d].%-10s", round, str);
+    for (int i = 0; i < 16; i++) {
+        printf("%.2x", state[i]);
+    }
+    printf("\n");
+}
 // Takes the state and the round keys and places it into cipherText
 void cipher(const uint8_t* state, uint8_t* cipherText, const uint8_t* w, const int Nk) {
     
+    printRound(0, "input", state);
     // Copying over the state into the ciphertext
     for (int i = 0; i < 16; i++) {
         cipherText[i] = state[i];
     }
     addRoundKey(cipherText, w);
+    printRound(0, "k_sch", w);
 
     const int wRoundKeys = ((Nk + 6) + 1);
     for (int i = 1; i < wRoundKeys; i++) {
-        
+        printRound(i, "start", cipherText);
         subBytes(cipherText);
+        printRound(i, "s_box", cipherText);
         shiftRows(cipherText);
-        if (i != wRoundKeys - 1)
+        printRound(i, "s_row", cipherText);
+        if (i != wRoundKeys - 1) {
             mixColumns(cipherText);
+            printRound(i, "m_col", cipherText);
+        }
         addRoundKey(cipherText, w + i * 16);
+        printRound(i, "k_sch", w + i * 16);
         
         // for (int i = 0; i < 4; i++) {
         //     for (int j = 0; j < 4; j++) {
@@ -297,9 +332,13 @@ void cipher(const uint8_t* state, uint8_t* cipherText, const uint8_t* w, const i
         // printf("\n");
         
     }
+    printRound(wRoundKeys - 1, "output", cipherText);
 }
 
 void invCipher(const uint8_t* cipherText, uint8_t* plainText, const uint8_t* w, const int Nk) {
+    int currentRound = 0;
+    printRound(currentRound, "iinput", cipherText);
+    
     // Copying over the cipherText to the plaintext
     for (int i = 0; i < 16; i++) {
         plainText[i] = cipherText[i];
@@ -307,96 +346,182 @@ void invCipher(const uint8_t* cipherText, uint8_t* plainText, const uint8_t* w, 
 
     const int wRoundKeys = ((Nk + 6) + 1);
     addRoundKey(plainText, w + (wRoundKeys - 1) * 16);
+    printRound(currentRound, "ik_sch", w + (wRoundKeys - 1) * 16);
+    currentRound++;
 
     for (int i = wRoundKeys - 2; i > 0; i--) {  // Continues until i == 0 for a different first step
+        printRound(currentRound, "istart", plainText);
         invShiftRows(plainText);
+        printRound(currentRound, "is_row", plainText);
         invSubBytes(plainText);
+        printRound(currentRound, "is_box", plainText);
         addRoundKey(plainText, w + (i) * 16);
+        printRound(currentRound, "ik_sch", w + i * 16);
+        printRound(currentRound, "ik_add", plainText);
         invMixColumns(plainText);
+        currentRound++;
     }
 
+    printRound(currentRound, "istart", plainText);
     invShiftRows(plainText);
+    printRound(currentRound, "is_row", plainText);
     invSubBytes(plainText);
+    printRound(currentRound, "is_box", plainText);
     addRoundKey(plainText, w);
-
-    // Printing the plaintext
-    for (int i = 0; i < 4; i++) {
-        for (int j = 0; j < 4; j++) {
-            printf("%.2x ", plainText[j * 4 + i]);
-        }
-        printf("\n");
-    }
-    printf("\n");
+    printRound(currentRound, "ik_sch", w);
+    printRound(currentRound, "ioutput", plainText);
 
 }
 
+
 int main() {
     // TEST CASES
-    // printf("%x\n", ffMultiply(0x57, 0x13));
-
-    // uint8_t* column = (uint8_t*)calloc(4, sizeof(uint8_t));
-    // column[0] = 0x19;
-    // column[1] = 0x3d;
-    // column[2] = 0xe3;
-    // column[3] = 0xbe;
-    // subWord(column);
-    // for (int i = 0; i < 4; i++) {
-    //     printf("%x\n", column[i]);
-    // }
-    // free(column);
+    // Plaintext (the same for all 3 ciphers)
+    const uint8_t plainText[16] = {
+        0x00, 0x11, 0x22, 0x33,
+        0x44, 0x55, 0x66, 0x77,
+        0x88, 0x99, 0xaa, 0xbb,
+        0xcc, 0xdd, 0xee, 0xff
+    };
     uint8_t* w;
-    int Nk = 4;
-    const uint8_t key[16] = {
-        0x2b, 0x7e, 0x15, 0x16,
-        0x28, 0xae, 0xd2, 0xa6,
-        0xab, 0xf7, 0x15, 0x88,
-        0x09, 0xcf, 0x4f, 0x3c
-    };
-    w = calloc(4 * 4 * (Nk + 6 + 1), sizeof(uint8_t));  // 4*4 blocks * num of Rounds
-    keyExpansion(key, w, Nk);
-
-    // Printing w
-    for (int i = 0; i < 4; i++) {
-        for (int j = 0; j < (4 * ((Nk + 6) + 1)); j++) {
-            printf("%.2x ", w[i + j * 4]);   // i*(4 * (Nk + 6 + 1))
-            if (j % 4 == 3) {
-                printf("    ");
-            }
-        }
-        printf("\n");
-    }
-
-
-    // uint8_t* state = (uint8_t*)calloc(16, sizeof(uint8_t));
-    // uint8_t* roundKey = (uint8_t*)calloc(16, sizeof(uint8_t));
-    const uint8_t stateArr[16] = {
-        0x32, 0x43, 0xf6, 0xa8,
-        0x88, 0x5a, 0x30, 0x8d,
-        0x31, 0x31, 0x98, 0xa2,
-        0xe0, 0x37, 0x07, 0x34
-    };
-
-    // for (int i = 0; i < 16; i++) {
-    //     state[i] = stateArr[i];
-    //     roundKey[i] = keyArr[i];
-    // }
-
-
     uint8_t cipherText[16];
-    cipher(stateArr, cipherText, w, Nk);
+    uint8_t decipherText[16];
+    int Nk;
 
-    uint8_t plaintext[16];
-    invCipher(cipherText, plaintext, w, Nk);
+    // AES-128
+    const uint8_t key128[16] = {
+        0x00, 0x01, 0x02, 0x03, 
+        0x04, 0x05, 0x06, 0x07, 
+        0x08, 0x09, 0x0a, 0x0b, 
+        0x0c, 0x0d, 0x0e, 0x0f
+    };
+    // Overhead
+    Nk = 4;
+    w = calloc(4 * 4 * (Nk + 6 + 1), sizeof(uint8_t));  // 4*4 blocks * num of Rounds
 
-    // Printing the State
+    // Ciphering
+    printf("C.1   AES-128 (Nk=4, Nr=10)\n");
+    printf("\n");
+    printf("PLAINTEXT:          00112233445566778899aabbccddeeff\n");
+    printf("KEY:                000102030405060708090a0b0c0d0e0f\n");
+    printf("\n");
+    printf("CIPHER (ENCRYPT):\n");
+
+    keyExpansion(key128, w, Nk);
+    cipher(plainText, cipherText, w, Nk);
+
+    // Deciphering
+    printf("\nINVERSE CIPHER (DECRYPT):\n");
+    invCipher(cipherText, decipherText, w, Nk);
+
+    free(w);
+
+    // AES-192
+    const uint8_t key192[24] = {
+        0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 
+        0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 
+        0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11, 
+        0x12, 0x13, 0x14, 0x15, 0x16, 0x17
+    };
+    // Overhead
+    Nk = 6;
+    w = calloc(4 * 4 * (Nk + 6 + 1), sizeof(uint8_t));  // 4*4 blocks * num of Rounds
+    
+    // Ciphering
+    printf("\nC.2   AES-192 (Nk=6, Nr=12)\n\n");
+    printf("PLAINTEXT:          00112233445566778899aabbccddeeff\n");
+    printf("KEY:                000102030405060708090a0b0c0d0e0f1011121314151617\n\n");
+    printf("CIPHER (ENCRYPT):\n");
+
+    keyExpansion(key192, w, Nk);
+    cipher(plainText, cipherText, w, Nk);
+
+    // Deciphering
+    printf("\nINVERSE CIPHER (DECRYPT):\n");
+    invCipher(cipherText, decipherText, w, Nk);
+
+    free(w);
+
+    // AES-256
+    const uint8_t key256[32] = {
+        0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 
+        0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 
+        0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 
+        0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f
+    };
+    // Overhead
+    Nk = 8;
+    w = calloc(4 * 4 * (Nk + 6 + 1), sizeof(uint8_t));  // 4*4 blocks * num of Rounds
+    
+    // Ciphering
+    printf("\nC.3   AES-256 (Nk=8, Nr=14)\n\n");
+    printf("PLAINTEXT:          00112233445566778899aabbccddeeff\n");
+    printf("KEY:                000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f\n\n");
+    printf("CIPHER (ENCRYPT):\n");
+
+    keyExpansion(key256, w, Nk);
+    cipher(plainText, cipherText, w, Nk);
+
+    // Deciphering
+    printf("\nINVERSE CIPHER (DECRYPT):\n");
+    invCipher(cipherText, decipherText, w, Nk);
+
+    free(w);
+    
+
+    // uint8_t* w;
+    // int Nk = 4;
+    // const uint8_t key[16] = {
+    //     0x2b, 0x7e, 0x15, 0x16,
+    //     0x28, 0xae, 0xd2, 0xa6,
+    //     0xab, 0xf7, 0x15, 0x88,
+    //     0x09, 0xcf, 0x4f, 0x3c
+    // };
+    // w = calloc(4 * 4 * (Nk + 6 + 1), sizeof(uint8_t));  // 4*4 blocks * num of Rounds
+    // keyExpansion(key, w, Nk);
+
+    // // Printing w
     // for (int i = 0; i < 4; i++) {
-    //     for (int j = 0; j < 4; j++) {
-    //         printf("%.2x ", cipherText[j * 4 + i]);
+    //     for (int j = 0; j < (4 * ((Nk + 6) + 1)); j++) {
+    //         printf("%.2x ", w[i + j * 4]);   // i*(4 * (Nk + 6 + 1))
+    //         if (j % 4 == 3) {
+    //             printf("    ");
+    //         }
     //     }
     //     printf("\n");
     // }
 
-    free(w);
-    // free(state);
-    // free(roundKey);
+
+    // // uint8_t* state = (uint8_t*)calloc(16, sizeof(uint8_t));
+    // // uint8_t* roundKey = (uint8_t*)calloc(16, sizeof(uint8_t));
+    // const uint8_t stateArr[16] = {
+    //     0x32, 0x43, 0xf6, 0xa8,
+    //     0x88, 0x5a, 0x30, 0x8d,
+    //     0x31, 0x31, 0x98, 0xa2,
+    //     0xe0, 0x37, 0x07, 0x34
+    // };
+
+    // // for (int i = 0; i < 16; i++) {
+    // //     state[i] = stateArr[i];
+    // //     roundKey[i] = keyArr[i];
+    // // }
+
+
+    // uint8_t cipherText[16];
+    // cipher(stateArr, cipherText, w, Nk);
+
+    // uint8_t plaintext[16];
+    // invCipher(cipherText, plaintext, w, Nk);
+
+    // // Printing the State
+    // // for (int i = 0; i < 4; i++) {
+    // //     for (int j = 0; j < 4; j++) {
+    // //         printf("%.2x ", cipherText[j * 4 + i]);
+    // //     }
+    // //     printf("\n");
+    // // }
+
+    // free(w);
+    // // free(state);
+    // // free(roundKey);
 }
