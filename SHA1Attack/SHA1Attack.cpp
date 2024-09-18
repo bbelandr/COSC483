@@ -164,7 +164,11 @@ class Hasher {
             unsigned char* newHash;
 
             while (true) {
-                // Find a new hash
+                for (size_t i = 0; i < foundHashes.size(); i++) {
+					printBits(foundHashes[i], SHA_DIGEST_LENGTH);
+				}
+				
+				// Find a new hash
                 generateBits(plainText, plainTextLength);
                 newHash = (hashTrunc(plainText, plainTextLength, truncLengths[whichTest]));
                 printf("%s\n", newHash);
@@ -188,8 +192,8 @@ int main() {
     Hasher hashTester;
     
     printf("did it asshole %ld\n", hashTester.testCollision(0));
-    // // PreImage setup
-    // for (size_t i = 0; i < 8; i++) {
+    // // Testing Preimages
+	// for (size_t i = 0; i < 8; i++) {
     //     for (int j = 0; j < 50; j++) {
     //         hashTester.generatePreImages();
     //         printf("TestCase(%ld:%.2d): %10ld iterations\n", i, j, hashTester.testPreImage(i));
