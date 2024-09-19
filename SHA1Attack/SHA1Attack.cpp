@@ -5,6 +5,7 @@
 #include <vector>
 
 #define NUM_HASHES 8
+#define NUM_SAMPLES 50
 
 using namespace std;
 
@@ -56,13 +57,12 @@ class Hasher {
             srand(clock());
         }
 
-        // Returns a digest that is as long as the specified length (in bits)
+        // Places a digest that is as long as the specified length (in bits) into hash
+        // No matter what, hash MUST BE of length SHA_DIGEST_lENGTH
         // Recall that SHA1 produces 160 bit hashes
-        unsigned char* hashTrunc(const unsigned char* plaintext, size_t plainLength, int hashLength) {
-            static unsigned char hash[SHA_DIGEST_LENGTH];  // SHA_DIGEST_LENGTH == 20
-            SHA1(plaintext, plainLength, hash);
+        void hashTrunc(const unsigned char* plaintext, size_t plainLength, unsigned char* hash, int hashLength) {
+            hash = SHA1(plaintext, plainLength, hash);
             trunc(hash, hashLength);
-            return hash;
         }
 
         void trunc(unsigned char* input, size_t truncLength) {  // Mutator that truncates the input to a given length of bits
@@ -110,7 +110,8 @@ class Hasher {
             vector<unsigned char> plainText{0};
             size_t iterations = 0;
 
-            unsigned char* tempHash = hashTrunc(&plainText[0], plainText.size(), truncLengths[whichTest]);
+            unsigned char tempHash[SHA_DIGEST_LENGTH];
+            hashTrunc(&plainText[0], plainText.size(), tempHash, truncLengths[whichTest]);
             while (!bitsAreEqual(tempHash, preImageHashes[whichTest], (truncLengths[whichTest] + 7) / 8 )) {
 
                 // ADD TO PLAINTEXT
@@ -136,7 +137,7 @@ class Hasher {
                 
                 // RUN THE HASHING ALGORITHM
 
-                tempHash = hashTrunc(&plainText[0], plainText.size(), truncLengths[whichTest]);
+                hashTrunc(&plainText[0], plainText.size(), tempHash, truncLengths[whichTest]);
                 iterations++;
             }
             // DEBUG printBits(tempHash, SHA_DIGEST_LENGTH);
@@ -147,8 +148,8 @@ class Hasher {
         bool findBitsInVector(unsigned char* bits, vector<unsigned char*> bitVector) {
             for (size_t i = 0; i < bitVector.size(); i++) {
                 if (bitsAreEqual(bits, bitVector[i], SHA_DIGEST_LENGTH)) {
-                    printBits(bits, SHA_DIGEST_LENGTH);
-                    printBits(bitVector[i], SHA_DIGEST_LENGTH);
+                    // printBits(bits, SHA_DIGEST_LENGTH);
+                    // printBits(bitVector[i], SHA_DIGEST_LENGTH);
                     return true;
                 }
             }
@@ -164,21 +165,22 @@ class Hasher {
             unsigned char* newHash;
 
             while (true) {
-                for (size_t i = 0; i < foundHashes.size(); i++) {
-					printBits(foundHashes[i], SHA_DIGEST_LENGTH);
-				}
-				
 				// Find a new hash
+                newHash = new unsigned char;
                 generateBits(plainText, plainTextLength);
-                newHash = (hashTrunc(plainText, plainTextLength, truncLengths[whichTest]));
-                printf("%s\n", newHash);
+                hashTrunc(plainText, plainTextLength, newHash, truncLengths[whichTest]);
+                // printf("%s\n", newHash);
 
                 // Check if the hash is already in the vector
                 if (findBitsInVector(newHash, foundHashes)) {
                     // If so, return the number of iterations
+                    // Cleanup
+                    for (size_t i = 0; i < foundHashes.size(); i++) {
+                        delete foundHashes[i];
+                    }
                     return iterations;
                 }
-                
+
                 // If not, add it to the vector and loop
                 foundHashes.push_back(newHash);
                 iterations++;
@@ -191,13 +193,22 @@ class Hasher {
 int main() {    
     Hasher hashTester;
     
-    printf("did it asshole %ld\n", hashTester.testCollision(0));
-    // // Testing Preimages
-	// for (size_t i = 0; i < 8; i++) {
-    //     for (int j = 0; j < 50; j++) {
-    //         hashTester.generatePreImages();
-    //         printf("TestCase(%ld:%.2d): %10ld iterations\n", i, j, hashTester.testPreImage(i));
-    //     }
-    //     cout << endl;
-    // }
+    // Testing Preimages
+    cout << "\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nPREIMAGE ATTACKS:\n";
+	for (size_t i = 0; i < NUM_HASHES; i++) {
+        for (int j = 0; j < NUM_SAMPLES; j++) {
+            hashTester.generatePreImages();
+            printf("TestCase(%ld:%.2d): %10ld iterations\n", i, j, hashTester.testPreImage(i));
+        }
+        cout << endl;
+    }
+    
+    // Testing Collision Attacks
+    cout << "\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nCOLLISION ATTACKS:\n";
+    for (size_t i = 0; i < NUM_HASHES; i++) {
+        for (int j = 0; j < NUM_SAMPLES; j++) {
+            printf("TestCase(%ld:%.2d): %10ld iterations\n", i, j, hashTester.testCollision(i));
+        }
+        cout << endl;
+    }
 }
