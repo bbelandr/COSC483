@@ -192,33 +192,44 @@ class Hasher {
 
 // Here are the test cases: { 8, 10, 12, 14, 16, 18, 20, 22 };
 int main() {    
-    using namespace matplot;
 
-    auto x = linspace(0, 3 * pi, 200);
-    auto y = transform(x, [&](double x) { return cos(x) + rand(0, 1); });
+    Hasher hashTester;
+    vector<double>x;
+    vector<double>y;
 
-    scatter(x, y);
-
-    show();
-    return 0;
-    // Hasher hashTester;
-    
     // // Testing Preimages
     // cout << "\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nPREIMAGE ATTACKS:\n";
 	// for (size_t i = 0; i < NUM_HASHES; i++) {
     //     for (int j = 0; j < NUM_SAMPLES; j++) {
     //         hashTester.generatePreImages();
-    //         printf("TestCase(%ld:%.2d): %10ld iterations\n", i, j, hashTester.testPreImage(i));
+    //         size_t iterations = hashTester.testPreImage(i);
+    //         // printf("TestCase(%ld:%.2d): %10ld iterations\n", i, j, iterations);
+    //         x.push_back(i);
+    //         y.push_back(iterations);
     //     }
     //     cout << endl;
     // }
     
-    // // Testing Collision Attacks
+    // Testing Collision Attacks
     // cout << "\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nCOLLISION ATTACKS:\n";
     // for (size_t i = 0; i < NUM_HASHES; i++) {
     //     for (int j = 0; j < NUM_SAMPLES; j++) {
-    //         printf("TestCase(%ld:%.2d): %10ld iterations\n", i, j, hashTester.testCollision(i));
+    //         size_t iterations = hashTester.testCollision(i);
+    //         // printf("TestCase(%ld:%.2d): %10ld iterations\n", i, j, iterations);
+    //         x.push_back((double)i);
+    //         y.push_back((double)iterations);
     //     }
     //     cout << endl;
     // }
+
+    // auto x = linspace(0, 3 * pi, 200);
+    // auto y = transform(x, [&](double x) { return cos(x) + rand(0, 1); });
+    vector<double>linex = {0, 1, 2, 3, 4, 5, 6, 7};
+    // vector<double>liney = {18.8386, 37.6771, 75.3542, 150.708, 301.417, 602.834, 1205.67, 2411.34};
+    vector<double>liney = {128, 512, 2048, 8192, 32768, 131072, 524288, 2097152};
+
+    matplot::scatter(x, y);
+    matplot::plot(linex, liney, "-o");
+    matplot::show();
+    return 0;
 }
