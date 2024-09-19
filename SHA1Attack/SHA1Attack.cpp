@@ -1,5 +1,6 @@
 #include <iostream>
 #include <openssl/sha.h>
+#include <matplot/matplot.h>
 #include <bitset>
 #include <cstring>
 #include <vector>
@@ -191,24 +192,33 @@ class Hasher {
 
 // Here are the test cases: { 8, 10, 12, 14, 16, 18, 20, 22 };
 int main() {    
-    Hasher hashTester;
+    using namespace matplot;
+
+    auto x = linspace(0, 3 * pi, 200);
+    auto y = transform(x, [&](double x) { return cos(x) + rand(0, 1); });
+
+    scatter(x, y);
+
+    show();
+    return 0;
+    // Hasher hashTester;
     
-    // Testing Preimages
-    cout << "\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nPREIMAGE ATTACKS:\n";
-	for (size_t i = 0; i < NUM_HASHES; i++) {
-        for (int j = 0; j < NUM_SAMPLES; j++) {
-            hashTester.generatePreImages();
-            printf("TestCase(%ld:%.2d): %10ld iterations\n", i, j, hashTester.testPreImage(i));
-        }
-        cout << endl;
-    }
+    // // Testing Preimages
+    // cout << "\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nPREIMAGE ATTACKS:\n";
+	// for (size_t i = 0; i < NUM_HASHES; i++) {
+    //     for (int j = 0; j < NUM_SAMPLES; j++) {
+    //         hashTester.generatePreImages();
+    //         printf("TestCase(%ld:%.2d): %10ld iterations\n", i, j, hashTester.testPreImage(i));
+    //     }
+    //     cout << endl;
+    // }
     
-    // Testing Collision Attacks
-    cout << "\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nCOLLISION ATTACKS:\n";
-    for (size_t i = 0; i < NUM_HASHES; i++) {
-        for (int j = 0; j < NUM_SAMPLES; j++) {
-            printf("TestCase(%ld:%.2d): %10ld iterations\n", i, j, hashTester.testCollision(i));
-        }
-        cout << endl;
-    }
+    // // Testing Collision Attacks
+    // cout << "\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nCOLLISION ATTACKS:\n";
+    // for (size_t i = 0; i < NUM_HASHES; i++) {
+    //     for (int j = 0; j < NUM_SAMPLES; j++) {
+    //         printf("TestCase(%ld:%.2d): %10ld iterations\n", i, j, hashTester.testCollision(i));
+    //     }
+    //     cout << endl;
+    // }
 }
