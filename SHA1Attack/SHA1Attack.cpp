@@ -6,7 +6,7 @@
 #include <vector>
 
 #define NUM_HASHES 8
-#define NUM_SAMPLES 50
+#define NUM_SAMPLES 5
 
 using namespace std;
 
@@ -194,42 +194,57 @@ class Hasher {
 int main() {    
 
     Hasher hashTester;
-    vector<double>x;
-    vector<double>y;
+    vector<double>xPreImage;
+    vector<double>yPreImage;
+    vector<double>xCollision;
+    vector<double>yCollision;
 
-    // // Testing Preimages
-    // cout << "\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nPREIMAGE ATTACKS:\n";
-	// for (size_t i = 0; i < NUM_HASHES; i++) {
-    //     for (int j = 0; j < NUM_SAMPLES; j++) {
-    //         hashTester.generatePreImages();
-    //         size_t iterations = hashTester.testPreImage(i);
-    //         // printf("TestCase(%ld:%.2d): %10ld iterations\n", i, j, iterations);
-    //         x.push_back(i);
-    //         y.push_back(iterations);
-    //     }
-    //     cout << endl;
-    // }
+    // Testing Preimages
+    cout << "\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nPREIMAGE ATTACKS:\n";
+	for (size_t i = 0; i < NUM_HASHES; i++) {
+        for (int j = 0; j < NUM_SAMPLES; j++) {
+            hashTester.generatePreImages();
+            size_t iterations = hashTester.testPreImage(i);
+            printf("TestCase(%ld:%.2d): %10ld iterations\n", i, j, iterations);
+            xPreImage.push_back(i);
+            yPreImage.push_back(iterations);
+        }
+        cout << endl;
+    }
     
     // Testing Collision Attacks
-    // cout << "\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nCOLLISION ATTACKS:\n";
-    // for (size_t i = 0; i < NUM_HASHES; i++) {
-    //     for (int j = 0; j < NUM_SAMPLES; j++) {
-    //         size_t iterations = hashTester.testCollision(i);
-    //         // printf("TestCase(%ld:%.2d): %10ld iterations\n", i, j, iterations);
-    //         x.push_back((double)i);
-    //         y.push_back((double)iterations);
-    //     }
-    //     cout << endl;
-    // }
+    cout << "\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nCOLLISION ATTACKS:\n";
+    for (size_t i = 0; i < NUM_HASHES; i++) {
+        for (int j = 0; j < NUM_SAMPLES; j++) {
+            size_t iterations = hashTester.testCollision(i);
+            printf("TestCase(%ld:%.2d): %10ld iterations\n", i, j, iterations);
+            xCollision.push_back((double)i);
+            yCollision.push_back((double)iterations);
+        }
+        cout << endl;
+    }
 
     // auto x = linspace(0, 3 * pi, 200);
     // auto y = transform(x, [&](double x) { return cos(x) + rand(0, 1); });
-    vector<double>linex = {0, 1, 2, 3, 4, 5, 6, 7};
-    // vector<double>liney = {18.8386, 37.6771, 75.3542, 150.708, 301.417, 602.834, 1205.67, 2411.34};
-    vector<double>liney = {128, 512, 2048, 8192, 32768, 131072, 524288, 2097152};
+    vector<double>xLine = {0, 1, 2, 3, 4, 5, 6, 7};
+    vector<double>yPreImageLine = {18.8386, 37.6771, 75.3542, 150.708, 301.417, 602.834, 1205.67, 2411.34};  // Precalculated Averages
+    vector<double>yCollisionLine = {128, 512, 2048, 8192, 32768, 131072, 524288, 2097152};                       // Precalculated Averages
 
-    matplot::scatter(x, y);
-    matplot::plot(linex, liney, "-o");
+    matplot::scatter(xPreImage, yPreImage);
+    matplot::title("PreImage Samples");
     matplot::show();
+
+    matplot::scatter(xCollision, yCollision);
+    matplot::title("Collision Samples");
+    matplot::show();
+
+    matplot::plot(xLine, yPreImageLine, "-o");
+    matplot::title("Expected PreImage Line");
+    matplot::show();
+
+    matplot::plot(xLine, yCollisionLine, "-o");
+    matplot::title("Expected Collision Line");
+    matplot::show();
+
     return 0;
 }
